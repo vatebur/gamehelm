@@ -1,8 +1,8 @@
 {
-  "listen": "0.0.0.0:8231",
+  "listen": "127.0.0.1:18231",
   "password": "changeme",
-  "state_file": "state.json",
-  "log_file": "gamehelm.log",
+  "state_file": "/tmp/gamehelm-three-state.json",
+  "log_file": "/tmp/gamehelm-three.log",
   "services": {
     "palworld": {
       "display_name": "帕鲁世界",
@@ -11,6 +11,10 @@
     "terraria": {
       "display_name": "泰拉瑞亚",
       "unit": "terraria.service"
+    },
+    "factorio": {
+      "display_name": "异星工厂",
+      "unit": "factorio.service"
     }
   }
 }

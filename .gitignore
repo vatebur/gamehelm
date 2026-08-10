@@ -1,8 +1,8 @@
-/webctrl
+/gamehelm
 /config.json
 /state.json
-/webctrl.log
-/webctrl.log.*
+/gamehelm.log
+/gamehelm.log.*
 /.playwright-mcp/
-/webctrl-*.png
+/gamehelm-*.png
 *.tmp

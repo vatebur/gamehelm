@@ -4,6 +4,7 @@
   const csrf = document.querySelector('meta[name="csrf-token"]').content;
   const cards = new Map([...document.querySelectorAll(".service-card")].map(card => [card.dataset.service, card]));
   const serviceState = new Map();
+  const timerState = new Map();
   const dialog = document.getElementById("confirm-dialog");
   const toast = document.getElementById("toast");
   let pendingStop = null;
@@ -19,8 +20,10 @@
   };
 
   const remainingFor = service => {
-    if (!service?.deadline_unix) return 0;
-    return Math.max(0, service.deadline_unix - Date.now() / 1000);
+    const timer = service ? timerState.get(service.id) : null;
+    if (!service?.deadline_unix || !timer) return 0;
+    const elapsed = Math.max(0, (performance.now() - timer.syncedAt) / 1000);
+    return Math.max(0, timer.remainingSeconds - elapsed);
   };
 
   const showToast = (message, isError = false) => {
@@ -93,7 +96,16 @@
     extend.disabled = !canExtendNow;
   };
 
-  const applyServices = services => services.forEach(updateCard);
+  const applyServices = services => {
+    const syncedAt = performance.now();
+    services.forEach(service => {
+      timerState.set(service.id, {
+        remainingSeconds: Math.max(0, Number(service.remaining_seconds) || 0),
+        syncedAt,
+      });
+      updateCard(service);
+    });
+  };
 
   const poll = async () => {
     if (polling) return;

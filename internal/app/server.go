@@ -1,9 +1,10 @@
-package main
+package app
 
 import (
 	"crypto/subtle"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	sessionCookieName   = "webctrl_session"
-	loginCSRFCookieName = "webctrl_login_csrf"
+	sessionCookieName   = "gamehelm_session"
+	loginCSRFCookieName = "gamehelm_login_csrf"
 )
 
 //go:embed web/*.html web/assets/*
@@ -37,6 +38,13 @@ type loginPageData struct {
 type controlPageData struct {
 	CSRF            string
 	DefaultPassword bool
+	Services        []controlServiceData
+}
+
+type controlServiceData struct {
+	ID    string
+	Name  string
+	Index string
 }
 
 func newAppServer(cfg Config, ctrl *controller, logger *log.Logger) (*appServer, error) {
@@ -176,11 +184,20 @@ func (s *appServer) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 
 func (s *appServer) handleControl(w http.ResponseWriter, r *http.Request) {
 	sess, _ := s.currentSession(r)
+	services := make([]controlServiceData, 0, len(s.cfg.Services))
+	for index, id := range s.ctrl.ids {
+		services = append(services, controlServiceData{
+			ID:    id,
+			Name:  s.cfg.Services[id].DisplayName,
+			Index: fmt.Sprintf("%02d", index+1),
+		})
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := s.templates.ExecuteTemplate(w, "control.html", controlPageData{
 		CSRF:            sess.CSRF,
 		DefaultPassword: s.cfg.Password == defaultPassword,
+		Services:        services,
 	}); err != nil {
 		s.logger.Printf("控制台模板渲染失败 error=%q", err)
 	}

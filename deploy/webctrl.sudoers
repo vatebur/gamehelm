@@ -1,2 +1,0 @@
-Cmnd_Alias WEBCTRL_GAMES = /usr/bin/systemctl start @PALWORLD_UNIT@, /usr/bin/systemctl stop @PALWORLD_UNIT@, /usr/bin/systemctl start @TERRARIA_UNIT@, /usr/bin/systemctl stop @TERRARIA_UNIT@
-@RUN_USER@ ALL=(root) NOPASSWD: WEBCTRL_GAMES

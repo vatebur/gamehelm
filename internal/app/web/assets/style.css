@@ -195,13 +195,15 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .password-warning p { margin: .2rem 0 0; color: #bf8f87; font-size: .82rem; }
 .warning-symbol { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border: 1px solid var(--coral); border-radius: 50%; font: 800 1rem var(--mono); }
 
-.service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
-.service-card { position: relative; min-width: 0; padding: clamp(1.4rem, 3.5vw, 2.6rem); border: 1px solid var(--line-strong); background: linear-gradient(145deg, rgba(255,255,255,.025), transparent 42%), var(--panel); overflow: hidden; animation: rise-in .65s .12s both; transition: border-color .25s, transform .25s; }
+.service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr)); gap: 1.2rem; }
+.service-card { --card-accent: var(--amber); position: relative; min-width: 0; padding: clamp(1.4rem, 3.5vw, 2.6rem); border: 1px solid var(--line-strong); background: linear-gradient(145deg, rgba(255,255,255,.025), transparent 42%), var(--panel); overflow: hidden; animation: rise-in .65s .12s both; transition: border-color .25s, transform .25s; }
 .service-card:nth-child(2) { animation-delay: .2s; }
+.service-card:nth-child(3n + 2) { --card-accent: var(--teal); }
+.service-card:nth-child(3n) { --card-accent: var(--acid); }
+.service-card:nth-child(3) { animation-delay: .28s; }
+.service-card:nth-child(n + 4) { animation-delay: .34s; }
 .service-card:hover { transform: translateY(-3px); border-color: rgba(226,235,224,.42); }
 .service-card::before { content: ""; position: absolute; width: 180px; height: 180px; right: -90px; top: -90px; border-radius: 50%; background: var(--card-accent); opacity: .045; }
-.pal-card { --card-accent: var(--amber); }
-.terraria-card { --card-accent: var(--teal); }
 .service-card.is-running { border-color: color-mix(in srgb, var(--card-accent) 56%, transparent); }
 .card-index { position: absolute; right: 1.3rem; bottom: -.35rem; color: rgba(226,235,224,.035); font: 800 clamp(5rem, 11vw, 9rem)/1 var(--mono); pointer-events: none; }
 .card-header { position: relative; display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
@@ -226,7 +228,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .timer-zone { position: relative; }
 .timer-label { display: flex; justify-content: space-between; color: var(--muted); font-size: .68rem; letter-spacing: .06em; }
 .extension-count { color: var(--card-accent); }
-.countdown { margin: .6rem 0 .9rem; font: 500 clamp(2.8rem, 6vw, 5.4rem)/1 var(--mono); letter-spacing: -.08em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.countdown { margin: .6rem 0 .9rem; font: 500 clamp(2.65rem, 5vw, 4.7rem)/1 var(--mono); letter-spacing: -.08em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .timer-rail { height: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
 .timer-rail i { display: block; width: 0; height: 100%; background: var(--card-accent); box-shadow: 0 0 12px var(--card-accent); transition: width .5s linear; }
 .deadline-label { margin: .8rem 0 0; color: var(--muted); font: .7rem var(--mono); }

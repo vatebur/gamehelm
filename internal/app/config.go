@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 )
 
 const (
@@ -14,7 +16,10 @@ const (
 	defaultPassword = "changeme"
 )
 
-var unitNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.@-]+\.service$`)
+var (
+	unitNamePattern  = regexp.MustCompile(`^[A-Za-z0-9_.@-]+\.service$`)
+	serviceIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+)
 
 type ServiceConfig struct {
 	DisplayName string `json:"display_name"`
@@ -59,7 +64,7 @@ func (c *Config) validate(baseDir string) error {
 		c.StateFile = "state.json"
 	}
 	if c.LogFile == "" {
-		c.LogFile = "webctrl.log"
+		c.LogFile = "gamehelm.log"
 	}
 	if !filepath.IsAbs(c.StateFile) {
 		c.StateFile = filepath.Join(baseDir, c.StateFile)
@@ -68,20 +73,33 @@ func (c *Config) validate(baseDir string) error {
 		c.LogFile = filepath.Join(baseDir, c.LogFile)
 	}
 
-	for _, id := range []string{"palworld", "terraria"} {
-		svc, ok := c.Services[id]
-		if !ok {
-			return fmt.Errorf("缺少 services.%s 配置", id)
+	if len(c.Services) == 0 {
+		return errors.New("services 至少需要包含一个服务")
+	}
+	units := make(map[string]string, len(c.Services))
+	for id, svc := range c.Services {
+		if !serviceIDPattern.MatchString(id) {
+			return fmt.Errorf("services.%s 的标识不合法，只能使用小写字母、数字、下划线和连字符", id)
 		}
-		if svc.DisplayName == "" {
+		if strings.TrimSpace(svc.DisplayName) == "" {
 			return fmt.Errorf("services.%s.display_name 不能为空", id)
 		}
 		if !unitNamePattern.MatchString(svc.Unit) {
 			return fmt.Errorf("services.%s.unit 不是合法的 systemd service 名称", id)
 		}
-	}
-	if len(c.Services) != 2 {
-		return errors.New("services 只能包含 palworld 和 terraria")
+		if otherID, exists := units[svc.Unit]; exists {
+			return fmt.Errorf("services.%s.unit 与 services.%s 重复", id, otherID)
+		}
+		units[svc.Unit] = id
 	}
 	return nil
+}
+
+func (c Config) serviceIDs() []string {
+	ids := make([]string, 0, len(c.Services))
+	for id := range c.Services {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }

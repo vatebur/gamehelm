@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>服务器控制台 · 登录</title>
+  <title>游舵 · 登录</title>
   <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body class="login-body">
@@ -13,9 +13,9 @@
       <div class="brand-mark" aria-hidden="true">
         <span></span><span></span><span></span>
       </div>
-      <p class="eyebrow">GAME SERVER CONTROL / 8231</p>
-      <h1 id="login-title">服务器<br>控制台</h1>
-      <p class="login-intro">授权人员入口。登录后可启动、续时或安全关闭游戏服务器。</p>
+      <p class="eyebrow">服务定时控制 / 8231</p>
+      <h1 id="login-title">游舵<br>控制台</h1>
+      <p class="login-intro">授权人员入口。登录后可启动、续时或安全关闭受管服务。</p>
       {{if .Error}}<div class="form-error" role="alert">{{.Error}}</div>{{end}}
       <form method="post" action="/login" class="login-form">
         <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -36,8 +36,8 @@
       <div class="server-glyph">
         <i></i><i></i><i></i><i></i>
       </div>
-      <div class="aside-copy">TWO WORLDS<br>ONE CONSOLE</div>
-      <div class="coordinate coordinate-bottom">SYSTEM READY<br>AWAITING AUTH</div>
+      <div class="aside-copy">多项服务<br>一个控制台</div>
+      <div class="coordinate coordinate-bottom">系统就绪<br>等待登录</div>
     </aside>
   </main>
 </body>

@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ type persistedState struct {
 func newPersistedState() persistedState {
 	return persistedState{
 		Version:  1,
-		Services: map[string]timerRecord{"palworld": {}, "terraria": {}},
+		Services: make(map[string]timerRecord),
 	}
 }
 
@@ -47,11 +47,6 @@ func loadState(path string) (persistedState, error) {
 	}
 	if state.Services == nil {
 		state.Services = make(map[string]timerRecord)
-	}
-	for _, id := range []string{"palworld", "terraria"} {
-		if _, ok := state.Services[id]; !ok {
-			state.Services[id] = timerRecord{}
-		}
 	}
 	return state, nil
 }

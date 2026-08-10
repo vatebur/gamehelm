@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -95,6 +95,7 @@ type serviceView struct {
 
 type controller struct {
 	cfg       Config
+	ids       []string
 	runner    commandRunner
 	logger    *log.Logger
 	now       func() time.Time
@@ -111,29 +112,34 @@ func newController(cfg Config, runner commandRunner, logger *log.Logger) (*contr
 	if err != nil {
 		return nil, err
 	}
+	ids := cfg.serviceIDs()
+	locks := make(map[string]*sync.Mutex, len(ids))
+	activeState := newPersistedState()
+	for _, id := range ids {
+		locks[id] = &sync.Mutex{}
+		activeState.Services[id] = state.Services[id]
+	}
 	return &controller{
 		cfg:       cfg,
+		ids:       ids,
 		runner:    runner,
 		logger:    logger,
 		now:       time.Now,
-		state:     state,
+		state:     activeState,
 		statuses:  make(map[string]unitStatus),
 		statusErr: make(map[string]string),
 		busy:      make(map[string]string),
-		locks: map[string]*sync.Mutex{
-			"palworld": {},
-			"terraria": {},
-		},
+		locks:     locks,
 	}, nil
 }
 
 func (c *controller) validID(id string) bool {
 	_, ok := c.cfg.Services[id]
-	return ok && (id == "palworld" || id == "terraria")
+	return ok
 }
 
 func (c *controller) reconcileAll(ctx context.Context) {
-	for _, id := range []string{"palworld", "terraria"} {
+	for _, id := range c.ids {
 		c.reconcile(ctx, id)
 	}
 }
@@ -442,8 +448,8 @@ func (c *controller) views() []serviceView {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	now := c.now().Unix()
-	views := make([]serviceView, 0, 2)
-	for _, id := range []string{"palworld", "terraria"} {
+	views := make([]serviceView, 0, len(c.ids))
+	for _, id := range c.ids {
 		cfg := c.cfg.Services[id]
 		status := c.statuses[id]
 		record := c.state.Services[id]
@@ -506,10 +512,10 @@ func chineseDetail(status unitStatus) string {
 		return "服务器在线，自动关服计时生效"
 	}
 	if status.Active == "activating" {
-		return "正在等待游戏服务器完成启动"
+		return "正在等待服务完成启动"
 	}
 	if status.Active == "deactivating" {
-		return "正在安全保存并关闭游戏服务器"
+		return "正在安全保存并关闭服务"
 	}
 	if status.Active == "failed" {
 		return "systemd 报告进程启动或运行失败"

@@ -1,9 +1,8 @@
-package main
+package app
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,37 +13,32 @@ import (
 	"time"
 )
 
-func main() {
-	configPath := flag.String("config", "config.json", "配置文件路径")
-	printInstallValues := flag.Bool("print-install-values", false, "输出安装模板所需的非敏感配置")
-	flag.Parse()
-
-	cfg, err := loadConfig(*configPath)
+func Run(configPath string, printInstallValues bool) error {
+	cfg, err := loadConfig(configPath)
 	if err != nil {
-		logStartupError(*configPath, err)
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		logStartupError(configPath, err)
+		return err
 	}
-	if *printInstallValues {
-		fmt.Println(cfg.Services["palworld"].Unit)
-		fmt.Println(cfg.Services["terraria"].Unit)
-		return
+	if printInstallValues {
+		for _, id := range cfg.serviceIDs() {
+			fmt.Println(cfg.Services[id].Unit)
+		}
+		return nil
 	}
 	writer, err := newRotatingWriter(cfg.LogFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "打开日志文件: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("打开日志文件: %w", err)
 	}
 	defer writer.Close()
 	logger := log.New(writer, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
 	ctrl, err := newController(cfg, systemdRunner{}, logger)
 	if err != nil {
-		logger.Fatalf("初始化控制器失败: %v", err)
+		return fmt.Errorf("初始化控制器: %w", err)
 	}
 	app, err := newAppServer(cfg, ctrl, logger)
 	if err != nil {
-		logger.Fatalf("初始化页面失败: %v", err)
+		return fmt.Errorf("初始化页面: %w", err)
 	}
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -74,14 +68,15 @@ func main() {
 
 	logger.Printf("Web 控制服务启动 listen=%s", cfg.Listen)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Fatalf("HTTP 服务异常退出: %v", err)
+		return fmt.Errorf("HTTP 服务异常退出: %w", err)
 	}
 	logger.Printf("Web 控制服务已停止")
+	return nil
 }
 
 func logStartupError(configPath string, startupErr error) {
 	dir := filepath.Dir(configPath)
-	path := filepath.Join(dir, "webctrl.log")
+	path := filepath.Join(dir, "gamehelm.log")
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
