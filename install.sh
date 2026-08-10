@@ -6,6 +6,10 @@ PROJECT_DIR=${GAMEHELM_DIR:-$SCRIPT_DIR}
 RUN_USER=${GAMEHELM_USER:-$(stat -c '%U' "$PROJECT_DIR")}
 EXPECTED_GO='go version go1.26.5 '
 
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[&|\\]/\\&/g'
+}
+
 if [[ ${EUID} -ne 0 ]]; then
   echo "请使用 root 权限运行：sudo ./install.sh" >&2
   exit 1
@@ -23,6 +27,14 @@ go build -buildvcs=false -trimpath -ldflags='-s -w' -o gamehelm ./cmd/gamehelm
 if [[ ! -f config.json ]]; then
   cp config.example.json config.json
 fi
+legacy_project_dir=$(dirname "$PROJECT_DIR")/webctrl
+legacy_value=$(escape_sed_replacement "$legacy_project_dir")
+project_value=$(escape_sed_replacement "$PROJECT_DIR")
+sed -i \
+  -e "/^[[:space:]]*\"state_file\":/s|$legacy_value/|$project_value/|" \
+  -e "/^[[:space:]]*\"log_file\":/s|$legacy_value/|$project_value/|" \
+  -e '/^[[:space:]]*"log_file":/s|webctrl\.log|gamehelm.log|' \
+  config.json
 chmod 0600 config.json
 touch gamehelm.log
 chmod 0600 gamehelm.log
@@ -37,10 +49,6 @@ if [[ ${#GAME_UNITS[@]} -lt 1 ]]; then
 	echo "无法从 config.json 读取游戏 unit" >&2
 	exit 1
 fi
-
-escape_sed_replacement() {
-  printf '%s' "$1" | sed 's/[&|\\]/\\&/g'
-}
 
 project_value=$(escape_sed_replacement "$PROJECT_DIR")
 user_value=$(escape_sed_replacement "$RUN_USER")
