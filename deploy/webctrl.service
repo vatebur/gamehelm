@@ -1,0 +1,21 @@
+[Unit]
+Description=Palworld and Terraria web controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+WorkingDirectory=@PROJECT_DIR@
+ExecStart=@PROJECT_DIR@/webctrl -config @PROJECT_DIR@/config.json
+Restart=always
+RestartSec=3s
+UMask=0077
+PrivateTmp=true
+ProtectSystem=full
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

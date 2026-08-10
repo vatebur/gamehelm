@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="csrf-token" content="{{.CSRF}}">
+  <title>游戏服务器控制台</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body class="control-body">
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="wordmark" href="/control" aria-label="游戏服务器控制台首页">
+      <span class="wordmark-icon"><i></i><i></i><i></i></span>
+      <span>服务器控制台</span>
+    </a>
+    <div class="topbar-meta">
+      <div class="local-time"><span>本地时间</span><strong id="local-time">--:--:--</strong></div>
+      <button id="logout-button" class="text-button" type="button">退出登录</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <section class="dashboard-heading">
+      <div>
+        <p class="eyebrow">LIVE PROCESS CONTROL</p>
+        <h1>选择一个世界，<br><em>保持它在线。</em></h1>
+      </div>
+      <p class="heading-note">每次成功启动后自动运行 4 小时。进入最后 1 小时即可续时，每次增加 1 小时。</p>
+    </section>
+
+    {{if .DefaultPassword}}
+    <aside class="password-warning" role="alert">
+      <span class="warning-symbol">!</span>
+      <div><strong>正在使用默认密码 changeme</strong><p>请修改 config.json 后重启 webctrl.service。</p></div>
+    </aside>
+    {{end}}
+
+    <section class="service-grid" aria-label="游戏服务器">
+      <article class="service-card pal-card" data-service="palworld">
+        <div class="card-index">01</div>
+        <header class="card-header">
+          <div>
+            <p class="card-kicker">SURVIVAL / OPEN WORLD</p>
+            <h2>帕鲁世界</h2>
+          </div>
+          <button class="power-switch" type="button" role="switch" aria-checked="false" aria-label="启动帕鲁世界">
+            <span class="switch-track"><i></i></span>
+            <span class="switch-label">关闭</span>
+          </button>
+        </header>
+
+        <div class="status-line">
+          <span class="status-beacon" aria-hidden="true"></span>
+          <div><strong class="service-status">状态检测中</strong><p class="service-detail">正在读取 systemd 服务状态</p></div>
+        </div>
+
+        <div class="timer-zone">
+          <div class="timer-label"><span>自动关闭倒计时</span><span class="extension-count"></span></div>
+          <div class="countdown" aria-live="polite">--:--:--</div>
+          <div class="timer-rail" aria-hidden="true"><i></i></div>
+          <p class="deadline-label">启动后将在此显示关闭时间</p>
+        </div>
+
+        <div class="service-notice" aria-live="polite"></div>
+        <footer class="card-actions">
+          <button class="extend-button" type="button" disabled><span>+</span> 延长 1 小时</button>
+          <button class="stop-button" type="button" disabled>手动关闭</button>
+        </footer>
+      </article>
+
+      <article class="service-card terraria-card" data-service="terraria">
+        <div class="card-index">02</div>
+        <header class="card-header">
+          <div>
+            <p class="card-kicker">SANDBOX / ADVENTURE</p>
+            <h2>泰拉瑞亚</h2>
+          </div>
+          <button class="power-switch" type="button" role="switch" aria-checked="false" aria-label="启动泰拉瑞亚">
+            <span class="switch-track"><i></i></span>
+            <span class="switch-label">关闭</span>
+          </button>
+        </header>
+
+        <div class="status-line">
+          <span class="status-beacon" aria-hidden="true"></span>
+          <div><strong class="service-status">状态检测中</strong><p class="service-detail">正在读取 systemd 服务状态</p></div>
+        </div>
+
+        <div class="timer-zone">
+          <div class="timer-label"><span>自动关闭倒计时</span><span class="extension-count"></span></div>
+          <div class="countdown" aria-live="polite">--:--:--</div>
+          <div class="timer-rail" aria-hidden="true"><i></i></div>
+          <p class="deadline-label">启动后将在此显示关闭时间</p>
+        </div>
+
+        <div class="service-notice" aria-live="polite"></div>
+        <footer class="card-actions">
+          <button class="extend-button" type="button" disabled><span>+</span> 延长 1 小时</button>
+          <button class="stop-button" type="button" disabled>手动关闭</button>
+        </footer>
+      </article>
+    </section>
+
+    <footer class="dashboard-footer">
+      <p><span class="sync-dot"></span><span id="sync-status">正在同步服务器状态</span></p>
+      <p>倒计时以服务器时间为准</p>
+    </footer>
+  </main>
+
+  <dialog id="confirm-dialog" class="confirm-dialog">
+    <form method="dialog">
+      <p class="eyebrow">CONFIRM SHUTDOWN</p>
+      <h2>确认关闭<span id="confirm-service-name"></span>？</h2>
+      <p>服务器将安全停止，当前在线玩家可能断开连接。本次剩余倒计时为 <strong id="confirm-remaining">--:--:--</strong>。</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="dialog-cancel">取消</button>
+        <button value="confirm" class="dialog-confirm">确认关闭</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+/webctrl
+/config.json
+/state.json
+/webctrl.log
+/webctrl.log.*
+/.playwright-mcp/
+/webctrl-*.png
+*.tmp

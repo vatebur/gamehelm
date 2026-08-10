@@ -1,0 +1,16 @@
+{
+  "listen": "0.0.0.0:8231",
+  "password": "changeme",
+  "state_file": "state.json",
+  "log_file": "webctrl.log",
+  "services": {
+    "palworld": {
+      "display_name": "帕鲁世界",
+      "unit": "palworld.service"
+    },
+    "terraria": {
+      "display_name": "泰拉瑞亚",
+      "unit": "terraria.service"
+    }
+  }
+}

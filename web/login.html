@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>服务器控制台 · 登录</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body class="login-body">
+  <main class="login-shell">
+    <section class="login-panel" aria-labelledby="login-title">
+      <div class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <p class="eyebrow">GAME SERVER CONTROL / 8231</p>
+      <h1 id="login-title">服务器<br>控制台</h1>
+      <p class="login-intro">授权人员入口。登录后可启动、续时或安全关闭游戏服务器。</p>
+      {{if .Error}}<div class="form-error" role="alert">{{.Error}}</div>{{end}}
+      <form method="post" action="/login" class="login-form">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <label for="password">访问密码</label>
+        <div class="password-field">
+          <input id="password" name="password" type="password" autocomplete="current-password" required autofocus placeholder="输入控制台密码">
+          <span aria-hidden="true">→</span>
+        </div>
+        <button type="submit" class="primary-button">进入控制台</button>
+      </form>
+      <div class="connection-note">
+        <span class="pulse-dot"></span>
+        <span>HTTP 连接 · 会话在浏览器关闭后失效</span>
+      </div>
+    </section>
+    <aside class="login-aside" aria-hidden="true">
+      <div class="coordinate coordinate-top">31°14′N<br>121°29′E</div>
+      <div class="server-glyph">
+        <i></i><i></i><i></i><i></i>
+      </div>
+      <div class="aside-copy">TWO WORLDS<br>ONE CONSOLE</div>
+      <div class="coordinate coordinate-bottom">SYSTEM READY<br>AWAITING AUTH</div>
+    </aside>
+  </main>
+</body>
+</html>
