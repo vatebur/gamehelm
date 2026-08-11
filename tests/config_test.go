@@ -12,7 +12,7 @@ import (
 func TestConfigAcceptsAndSortsMultipleServices(t *testing.T) {
 	cfg := testConfig(t)
 	cfg.Services["factorio"] = app.ServiceConfig{DisplayName: "异星工厂", Unit: "factorio.service"}
-	if err := cfg.Validate(t.TempDir()); err != nil {
+	if err := cfg.Validate(); err != nil {
 		t.Fatalf("three-service config rejected: %v", err)
 	}
 	if got, want := cfg.ServiceIDs(), []string{"factorio", "palworld", "terraria"}; !reflect.DeepEqual(got, want) {
@@ -23,7 +23,7 @@ func TestConfigAcceptsAndSortsMultipleServices(t *testing.T) {
 func TestConfigRejectsUnsafeOrDuplicateUnit(t *testing.T) {
 	cfg := testConfig(t)
 	cfg.Services["factorio"] = app.ServiceConfig{DisplayName: "异星工厂", Unit: "palworld.service"}
-	if err := cfg.Validate(t.TempDir()); err == nil {
+	if err := cfg.Validate(); err == nil {
 		t.Fatal("config accepted a duplicate unit")
 	}
 
@@ -31,7 +31,7 @@ func TestConfigRejectsUnsafeOrDuplicateUnit(t *testing.T) {
 	service := cfg.Services["palworld"]
 	service.Unit = "palworld.service; reboot"
 	cfg.Services["palworld"] = service
-	if err := cfg.Validate(t.TempDir()); err == nil {
+	if err := cfg.Validate(); err == nil {
 		t.Fatal("config accepted an unsafe unit name")
 	}
 }
@@ -39,8 +39,25 @@ func TestConfigRejectsUnsafeOrDuplicateUnit(t *testing.T) {
 func TestConfigRequiresAtLeastOneService(t *testing.T) {
 	cfg := testConfig(t)
 	cfg.Services = nil
-	if err := cfg.Validate(t.TempDir()); err == nil {
+	if err := cfg.Validate(); err == nil {
 		t.Fatal("config accepted no services")
+	}
+}
+
+func TestConfigIgnoresLegacyStateFile(t *testing.T) {
+	path := t.TempDir() + "/config.json"
+	data := []byte(`{
+  "password": "test-password",
+  "state_file": "state.json",
+  "services": {
+    "palworld": {"display_name": "帕鲁世界", "unit": "palworld.service"}
+  }
+}`)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadConfig(path); err != nil {
+		t.Fatalf("legacy state_file was rejected: %v", err)
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -27,10 +26,14 @@ type ServiceConfig struct {
 }
 
 type Config struct {
-	Listen    string                   `json:"listen"`
-	Password  string                   `json:"password"`
-	StateFile string                   `json:"state_file"`
-	Services  map[string]ServiceConfig `json:"services"`
+	Listen   string                   `json:"listen"`
+	Password string                   `json:"password"`
+	Services map[string]ServiceConfig `json:"services"`
+}
+
+type configFile struct {
+	Config
+	StateFile json.RawMessage `json:"state_file"`
 }
 
 func loadConfig(path string) (Config, error) {
@@ -40,32 +43,26 @@ func loadConfig(path string) (Config, error) {
 	}
 	defer f.Close()
 
-	var cfg Config
+	var file configFile
 	dec := json.NewDecoder(f)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&cfg); err != nil {
+	if err := dec.Decode(&file); err != nil {
 		return Config{}, fmt.Errorf("解析配置文件: %w", err)
 	}
-	if err := cfg.validate(filepath.Dir(path)); err != nil {
+	cfg := file.Config
+	if err := cfg.validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
 }
 
-func (c *Config) validate(baseDir string) error {
+func (c *Config) validate() error {
 	if c.Listen == "" {
 		c.Listen = defaultListen
 	}
 	if c.Password == "" {
 		return errors.New("配置项 password 不能为空")
 	}
-	if c.StateFile == "" {
-		c.StateFile = "state.json"
-	}
-	if !filepath.IsAbs(c.StateFile) {
-		c.StateFile = filepath.Join(baseDir, c.StateFile)
-	}
-
 	if len(c.Services) == 0 {
 		return errors.New("services 至少需要包含一个服务")
 	}

@@ -1,6 +1,5 @@
 /gamehelm
 /config.json
-/state.json
 /migration-backup/
 /.playwright-mcp/
 /gamehelm-*.png

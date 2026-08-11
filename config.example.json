@@ -1,7 +1,6 @@
 {
   "listen": "0.0.0.0:8231",
   "password": "changeme",
-  "state_file": "state.json",
   "services": {
     "palworld": {
       "display_name": "帕鲁世界",

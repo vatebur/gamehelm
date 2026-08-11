@@ -22,23 +22,20 @@ func LoadConfig(path string) (Config, error) {
 	return loadConfig(path)
 }
 
-func (c *Config) Validate(baseDir string) error {
-	return c.validate(baseDir)
+func (c *Config) Validate() error {
+	return c.validate()
 }
 
 func (c Config) ServiceIDs() []string {
 	return c.serviceIDs()
 }
 
-func NewController(cfg Config, runner CommandRunner, logger *log.Logger, options ...ControllerOption) (*Controller, error) {
-	controller, err := newController(cfg, runner, logger)
-	if err != nil {
-		return nil, err
-	}
+func NewController(cfg Config, runner CommandRunner, logger *log.Logger, options ...ControllerOption) *Controller {
+	controller := newController(cfg, runner, logger)
 	for _, option := range options {
 		option(controller)
 	}
-	return controller, nil
+	return controller
 }
 
 func (c *controller) Reconcile(ctx context.Context, id string) {
