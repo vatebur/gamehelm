@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/vatebur/gamehelm/internal/app"
@@ -39,5 +41,24 @@ func TestConfigRequiresAtLeastOneService(t *testing.T) {
 	cfg.Services = nil
 	if err := cfg.Validate(t.TempDir()); err == nil {
 		t.Fatal("config accepted no services")
+	}
+}
+
+func TestConfigRejectsRemovedLogFile(t *testing.T) {
+	path := t.TempDir() + "/config.json"
+	data := []byte(`{
+  "password": "test-password",
+  "state_file": "state.json",
+  "log_file": "gamehelm.log",
+  "services": {
+    "palworld": {"display_name": "帕鲁世界", "unit": "palworld.service"}
+  }
+}`)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := app.LoadConfig(path)
+	if err == nil || !strings.Contains(err.Error(), "unknown field \"log_file\"") {
+		t.Fatalf("removed log_file was not rejected: %v", err)
 	}
 }

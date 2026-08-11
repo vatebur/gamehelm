@@ -31,7 +31,7 @@ type commandRunner interface {
 type systemdRunner struct{}
 
 func (systemdRunner) Status(ctx context.Context, unit string) (unitStatus, error) {
-	cmd := exec.CommandContext(ctx, "/usr/bin/systemctl", "show", unit,
+	cmd := exec.CommandContext(ctx, "/usr/bin/systemctl", "--user", "show", unit,
 		"--property=LoadState", "--property=ActiveState", "--property=SubState", "--no-pager")
 	out, err := cmd.Output()
 	if err != nil {
@@ -64,7 +64,7 @@ func (systemdRunner) Stop(ctx context.Context, unit string) error {
 }
 
 func runSystemctl(ctx context.Context, action, unit string) error {
-	cmd := exec.CommandContext(ctx, "/usr/bin/sudo", "-n", "/usr/bin/systemctl", action, unit)
+	cmd := exec.CommandContext(ctx, "/usr/bin/systemctl", "--user", action, unit)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		message := strings.TrimSpace(string(out))

@@ -1,8 +1,7 @@
 /gamehelm
 /config.json
 /state.json
-/gamehelm.log
-/gamehelm.log.*
+/migration-backup/
 /.playwright-mcp/
 /gamehelm-*.png
 *.tmp

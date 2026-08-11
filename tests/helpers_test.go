@@ -55,7 +55,6 @@ func testConfig(t *testing.T) app.Config {
 		Listen:    "127.0.0.1:0",
 		Password:  "test-password",
 		StateFile: filepath.Join(dir, "state.json"),
-		LogFile:   filepath.Join(dir, "gamehelm.log"),
 		Services: map[string]app.ServiceConfig{
 			"palworld": {DisplayName: "帕鲁世界", Unit: "palworld.service"},
 			"terraria": {DisplayName: "泰拉瑞亚", Unit: "terraria.service"},

@@ -2,7 +2,6 @@
   "listen": "127.0.0.1:18231",
   "password": "changeme",
   "state_file": "/tmp/gamehelm-three-state.json",
-  "log_file": "/tmp/gamehelm-three.log",
   "services": {
     "palworld": {
       "display_name": "帕鲁世界",

@@ -8,29 +8,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 )
 
-func Run(configPath string, printInstallValues bool) error {
+func Run(configPath string) error {
 	cfg, err := loadConfig(configPath)
 	if err != nil {
-		logStartupError(configPath, err)
 		return err
 	}
-	if printInstallValues {
-		for _, id := range cfg.serviceIDs() {
-			fmt.Println(cfg.Services[id].Unit)
-		}
-		return nil
-	}
-	writer, err := newRotatingWriter(cfg.LogFile)
-	if err != nil {
-		return fmt.Errorf("打开日志文件: %w", err)
-	}
-	defer writer.Close()
-	logger := log.New(writer, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+	logger := log.New(os.Stdout, "", 0)
 
 	ctrl, err := newController(cfg, systemdRunner{}, logger)
 	if err != nil {
@@ -74,14 +61,22 @@ func Run(configPath string, printInstallValues bool) error {
 	return nil
 }
 
-func logStartupError(configPath string, startupErr error) {
-	dir := filepath.Dir(configPath)
-	path := filepath.Join(dir, "gamehelm.log")
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+func Check(configPath string) error {
+	cfg, err := loadConfig(configPath)
 	if err != nil {
-		return
+		return err
 	}
-	defer f.Close()
-	logger := log.New(f, "", log.LstdFlags)
-	logger.Printf("读取配置失败: %v", startupErr)
+	runner := systemdRunner{}
+	for _, id := range cfg.serviceIDs() {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		status, statusErr := runner.Status(ctx, cfg.Services[id].Unit)
+		cancel()
+		if statusErr != nil {
+			return fmt.Errorf("检查 user service %s: %w", cfg.Services[id].Unit, statusErr)
+		}
+		if status.Load != "loaded" {
+			return fmt.Errorf("user service %s 未加载", cfg.Services[id].Unit)
+		}
+	}
+	return nil
 }

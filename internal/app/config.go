@@ -30,7 +30,6 @@ type Config struct {
 	Listen    string                   `json:"listen"`
 	Password  string                   `json:"password"`
 	StateFile string                   `json:"state_file"`
-	LogFile   string                   `json:"log_file"`
 	Services  map[string]ServiceConfig `json:"services"`
 }
 
@@ -63,14 +62,8 @@ func (c *Config) validate(baseDir string) error {
 	if c.StateFile == "" {
 		c.StateFile = "state.json"
 	}
-	if c.LogFile == "" {
-		c.LogFile = "gamehelm.log"
-	}
 	if !filepath.IsAbs(c.StateFile) {
 		c.StateFile = filepath.Join(baseDir, c.StateFile)
-	}
-	if !filepath.IsAbs(c.LogFile) {
-		c.LogFile = filepath.Join(baseDir, c.LogFile)
 	}
 
 	if len(c.Services) == 0 {

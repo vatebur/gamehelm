@@ -1,12 +1,8 @@
 [Unit]
 Description=GameHelm multi-game server controller
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=simple
-User=@RUN_USER@
-Group=@RUN_GROUP@
 WorkingDirectory=@PROJECT_DIR@
 ExecStart=@PROJECT_DIR@/gamehelm -config @PROJECT_DIR@/config.json
 Restart=always
@@ -14,8 +10,9 @@ RestartSec=3s
 UMask=0077
 PrivateTmp=true
 ProtectSystem=full
-StandardOutput=null
-StandardError=null
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gamehelm
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

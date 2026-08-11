@@ -10,9 +10,15 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.json", "配置文件路径")
-	printInstallValues := flag.Bool("print-install-values", false, "输出安装模板所需的非敏感配置")
+	check := flag.Bool("check", false, "校验配置和 user services")
 	flag.Parse()
-	if err := app.Run(*configPath, *printInstallValues); err != nil {
+	var err error
+	if *check {
+		err = app.Check(*configPath)
+	} else {
+		err = app.Run(*configPath)
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
