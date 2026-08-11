@@ -19,10 +19,7 @@ func Run(configPath string) error {
 	}
 	logger := log.New(os.Stdout, "", 0)
 
-	ctrl, err := newController(cfg, systemdRunner{}, logger)
-	if err != nil {
-		return fmt.Errorf("初始化控制器: %w", err)
-	}
+	ctrl := newController(cfg, systemdRunner{}, logger)
 	app, err := newAppServer(cfg, ctrl, logger)
 	if err != nil {
 		return fmt.Errorf("初始化页面: %w", err)

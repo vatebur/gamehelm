@@ -144,8 +144,7 @@ uninstall_gamehelm() {
   # 清理 GameHelm 运行文件，保留源码与示例配置。
   rm -f -- \
     "$PROJECT_DIR/gamehelm" \
-    "$PROJECT_DIR/config.json" \
-    "$PROJECT_DIR/state.json"
+    "$PROJECT_DIR/config.json"
 
   echo "卸载完成：GameHelm user service 和运行文件已清理。"
 }

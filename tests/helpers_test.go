@@ -2,11 +2,8 @@ package tests
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -50,11 +47,9 @@ func (f *fakeRunner) Stop(_ context.Context, unit string) error {
 
 func testConfig(t *testing.T) app.Config {
 	t.Helper()
-	dir := t.TempDir()
 	return app.Config{
-		Listen:    "127.0.0.1:0",
-		Password:  "test-password",
-		StateFile: filepath.Join(dir, "state.json"),
+		Listen:   "127.0.0.1:0",
+		Password: "test-password",
 		Services: map[string]app.ServiceConfig{
 			"palworld": {DisplayName: "帕鲁世界", Unit: "palworld.service"},
 			"terraria": {DisplayName: "泰拉瑞亚", Unit: "terraria.service"},
@@ -64,29 +59,7 @@ func testConfig(t *testing.T) app.Config {
 
 func newTestController(t *testing.T, cfg app.Config, runner app.CommandRunner, options ...app.ControllerOption) *app.Controller {
 	t.Helper()
-	controller, err := app.NewController(cfg, runner, log.New(io.Discard, "", 0), options...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return controller
-}
-
-type testTimerRecord struct {
-	StartedUnix  int64  `json:"started_unix,omitempty"`
-	DeadlineUnix int64  `json:"deadline_unix,omitempty"`
-	Extensions   int    `json:"extensions,omitempty"`
-	Notice       string `json:"notice,omitempty"`
-}
-
-func writeState(t *testing.T, path string, records map[string]testTimerRecord) {
-	t.Helper()
-	data, err := json.Marshal(map[string]any{"version": 1, "services": records})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	return app.NewController(cfg, runner, log.New(io.Discard, "", 0), options...)
 }
 
 func viewByID(t *testing.T, controller *app.Controller, id string) app.ServiceView {

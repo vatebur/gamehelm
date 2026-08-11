@@ -29,13 +29,14 @@ func TestReconcileAdoptsExternalStart(t *testing.T) {
 func TestExtendOnlyDuringEachFinalHour(t *testing.T) {
 	cfg := testConfig(t)
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.Local)
-	writeState(t, cfg.StateFile, map[string]testTimerRecord{
-		"palworld": {StartedUnix: now.Add(-3 * time.Hour).Unix(), DeadlineUnix: now.Add(30 * time.Minute).Unix()},
-	})
 	runner := &fakeRunner{statuses: map[string]app.UnitStatus{
-		"palworld.service": {Load: "loaded", Active: "active", Sub: "running"},
+		"palworld.service": {Load: "loaded", Active: "inactive", Sub: "dead"},
 	}}
 	controller := newTestController(t, cfg, runner, app.WithClock(func() time.Time { return now }))
+	if err := controller.Start(context.Background(), "palworld", "test"); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	now = now.Add(3*time.Hour + 30*time.Minute)
 
 	if err := controller.Extend(context.Background(), "palworld", "test"); err != nil {
 		t.Fatalf("first extend: %v", err)
@@ -55,13 +56,14 @@ func TestExtendOnlyDuringEachFinalHour(t *testing.T) {
 func TestExpiredServiceIsStopped(t *testing.T) {
 	cfg := testConfig(t)
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.Local)
-	writeState(t, cfg.StateFile, map[string]testTimerRecord{
-		"palworld": {StartedUnix: now.Add(-5 * time.Hour).Unix(), DeadlineUnix: now.Add(-time.Hour).Unix()},
-	})
 	runner := &fakeRunner{statuses: map[string]app.UnitStatus{
-		"palworld.service": {Load: "loaded", Active: "active", Sub: "running"},
+		"palworld.service": {Load: "loaded", Active: "inactive", Sub: "dead"},
 	}}
 	controller := newTestController(t, cfg, runner, app.WithClock(func() time.Time { return now }))
+	if err := controller.Start(context.Background(), "palworld", "test"); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	now = now.Add(5 * time.Hour)
 
 	controller.Reconcile(context.Background(), "palworld")
 	if len(runner.stops) != 1 || runner.stops[0] != "palworld.service" {
@@ -69,6 +71,29 @@ func TestExpiredServiceIsStopped(t *testing.T) {
 	}
 	if got := viewByID(t, controller, "palworld").DeadlineUnix; got != 0 {
 		t.Fatalf("deadline remains after expiry: %d", got)
+	}
+}
+
+func TestControllerRestartResetsActiveServiceDeadline(t *testing.T) {
+	cfg := testConfig(t)
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.Local)
+	runner := &fakeRunner{statuses: map[string]app.UnitStatus{
+		"palworld.service": {Load: "loaded", Active: "active", Sub: "running"},
+	}}
+	first := newTestController(t, cfg, runner, app.WithClock(func() time.Time { return now }))
+	first.Reconcile(context.Background(), "palworld")
+	firstDeadline := viewByID(t, first, "palworld").DeadlineUnix
+
+	now = now.Add(30 * time.Minute)
+	restarted := newTestController(t, cfg, runner, app.WithClock(func() time.Time { return now }))
+	restarted.Reconcile(context.Background(), "palworld")
+	restartedDeadline := viewByID(t, restarted, "palworld").DeadlineUnix
+
+	if got, want := restartedDeadline, now.Add(4*time.Hour).Unix(); got != want {
+		t.Fatalf("deadline after restart = %d, want %d", got, want)
+	}
+	if restartedDeadline <= firstDeadline {
+		t.Fatalf("deadline was not reset: first=%d restarted=%d", firstDeadline, restartedDeadline)
 	}
 }
 
