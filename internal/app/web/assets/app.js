@@ -19,6 +19,19 @@
     return `${hours}:${minutes}:${secs}`;
   };
 
+  const formatDurationLabel = seconds => {
+    let remaining = Math.max(0, Math.floor(Number(seconds) || 0));
+    const parts = [];
+    const hours = Math.floor(remaining / 3600);
+    remaining %= 3600;
+    const minutes = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    if (hours) parts.push(`${hours} 小时`);
+    if (minutes) parts.push(`${minutes} 分钟`);
+    if (secs || !parts.length) parts.push(`${secs} 秒`);
+    return parts.join(" ");
+  };
+
   const remainingFor = service => {
     const timer = service ? timerState.get(service.id) : null;
     if (!service?.deadline_unix || !timer) return 0;
@@ -68,7 +81,10 @@
     status.textContent = service.status;
     detail.textContent = service.error || service.detail;
     card.querySelector(".service-notice").textContent = service.notice || "";
-    card.querySelector(".extension-count").textContent = service.extensions ? `已续时 ${service.extensions} 次` : "";
+    card.querySelector(".extension-count").textContent = !service.unlimited && service.extensions ? `已续时 ${service.extensions} 次` : "";
+    card.querySelector(".timer-title").textContent = service.unlimited ? "运行模式" : "自动关闭倒计时";
+    extend.hidden = Boolean(service.unlimited);
+    card.querySelector(".extend-label").textContent = `延长 ${formatDurationLabel(service.extension_duration_seconds)}`;
     renderTimer(service.id);
   };
 
@@ -82,17 +98,22 @@
     const rail = card.querySelector(".timer-rail i");
     const extend = card.querySelector(".extend-button");
 
-    countdown.textContent = service.running && service.deadline_unix ? formatDuration(remaining) : "--:--:--";
-    if (service.running && service.deadline_unix) {
+    if (service.unlimited) {
+      countdown.textContent = "无限运行";
+      deadline.textContent = "不会自动关闭";
+      rail.style.width = "100%";
+    } else if (service.running && service.deadline_unix) {
+      countdown.textContent = formatDuration(remaining);
       const date = new Date(service.deadline_unix * 1000);
       deadline.textContent = `计划关闭时间 · ${date.toLocaleString("zh-CN", { hour12: false })}`;
-      const cycle = Math.max(3600, 14400 + service.extensions * 3600);
+      const cycle = Math.max(1, service.run_duration_seconds + service.extensions * service.extension_duration_seconds);
       rail.style.width = `${Math.min(100, Math.max(0, remaining / cycle * 100))}%`;
     } else {
+      countdown.textContent = "--:--:--";
       deadline.textContent = "启动后将在此显示关闭时间";
       rail.style.width = "0%";
     }
-    const canExtendNow = service.running && !service.busy && remaining > 0 && remaining <= 3600;
+    const canExtendNow = !service.unlimited && service.running && !service.busy && service.can_extend && remaining > 0 && remaining <= service.extension_duration_seconds;
     extend.disabled = !canExtendNow;
   };
 
@@ -132,7 +153,11 @@
     try {
       const data = await request(`/api/services/${id}/${action}`, { method: "POST" });
       if (data.services) applyServices(data.services);
-      const success = { start: `${service.name}已启动`, stop: `${service.name}已关闭`, extend: `${service.name}已延长 1 小时` }[action];
+      const success = {
+        start: `${service.name}已启动`,
+        stop: `${service.name}已关闭`,
+        extend: `${service.name}已延长 ${formatDurationLabel(service.extension_duration_seconds)}`,
+      }[action];
       showToast(success);
     } catch (error) {
       showToast(error.message, true);
@@ -146,7 +171,7 @@
     if (!service) return;
     pendingStop = id;
     document.getElementById("confirm-service-name").textContent = service.name;
-    document.getElementById("confirm-remaining").textContent = formatDuration(remainingFor(service));
+    document.getElementById("confirm-remaining").textContent = service.unlimited ? "无限运行" : formatDuration(remainingFor(service));
     dialog.showModal();
   };
 
