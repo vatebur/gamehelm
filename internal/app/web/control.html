@@ -28,7 +28,7 @@
         <p class="eyebrow">实时服务控制</p>
         <h1>选择一项服务，<br><em>让它按计划运行。</em></h1>
       </div>
-      <p class="heading-note">每次成功启动后自动运行 4 小时。进入最后 1 小时即可续时，每次增加 1 小时。</p>
+      <p class="heading-note">每项服务按独立配置运行；有限服务临近关闭时可续时，无限服务会持续运行直至手动关闭。</p>
     </section>
 
     {{if .DefaultPassword}}
@@ -59,7 +59,7 @@
         </div>
 
         <div class="timer-zone">
-          <div class="timer-label"><span>自动关闭倒计时</span><span class="extension-count"></span></div>
+          <div class="timer-label"><span class="timer-title">自动关闭倒计时</span><span class="extension-count"></span></div>
           <div class="countdown" aria-live="polite">--:--:--</div>
           <div class="timer-rail" aria-hidden="true"><i></i></div>
           <p class="deadline-label">启动后将在此显示关闭时间</p>
@@ -67,7 +67,7 @@
 
         <div class="service-notice" aria-live="polite"></div>
         <footer class="card-actions">
-          <button class="extend-button" type="button" disabled><span>+</span> 延长 1 小时</button>
+          <button class="extend-button" type="button" disabled><span aria-hidden="true">+</span> <span class="extend-label">延长</span></button>
           <button class="stop-button" type="button" disabled>手动关闭</button>
         </footer>
       </article>

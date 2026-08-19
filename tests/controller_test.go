@@ -121,3 +121,69 @@ func TestThreeServicesRunIndependently(t *testing.T) {
 		t.Fatal("independent services should both remain running")
 	}
 }
+
+func TestServicesUseIndependentDurations(t *testing.T) {
+	cfg := testConfig(t)
+	palworld := cfg.Services["palworld"]
+	palworld.RunDuration = "6h"
+	palworld.ExtensionDuration = "30m"
+	cfg.Services["palworld"] = palworld
+	terraria := cfg.Services["terraria"]
+	terraria.RunDuration = "infinite"
+	terraria.ExtensionDuration = "2h"
+	cfg.Services["terraria"] = terraria
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.Local)
+	startedAt := now
+	runner := &fakeRunner{statuses: map[string]app.UnitStatus{
+		"palworld.service": {Load: "loaded", Active: "active", Sub: "running"},
+		"terraria.service": {Load: "loaded", Active: "active", Sub: "running"},
+	}}
+	controller := newTestController(t, cfg, runner, app.WithClock(func() time.Time { return now }))
+
+	controller.ReconcileAll(context.Background())
+	palworldView := viewByID(t, controller, "palworld")
+	if got, want := palworldView.DeadlineUnix, now.Add(6*time.Hour).Unix(); got != want {
+		t.Fatalf("palworld deadline = %d, want %d", got, want)
+	}
+	if palworldView.RunDurationSeconds != int64((6*time.Hour)/time.Second) || palworldView.ExtensionDurationSeconds != int64((30*time.Minute)/time.Second) {
+		t.Fatalf("palworld durations = %d/%d", palworldView.RunDurationSeconds, palworldView.ExtensionDurationSeconds)
+	}
+	now = now.Add(5*time.Hour + 31*time.Minute)
+	if err := controller.Extend(context.Background(), "palworld", "test"); err != nil {
+		t.Fatalf("custom extension: %v", err)
+	}
+	if got, want := viewByID(t, controller, "palworld").DeadlineUnix, startedAt.Add(6*time.Hour+30*time.Minute).Unix(); got != want {
+		t.Fatalf("extended deadline = %d, want %d", got, want)
+	}
+	if err := controller.Extend(context.Background(), "palworld", "test"); err == nil {
+		t.Fatal("immediate repeated custom extension was accepted")
+	}
+
+	terrariaView := viewByID(t, controller, "terraria")
+	if !terrariaView.Unlimited || terrariaView.DeadlineUnix != 0 || terrariaView.RunDurationSeconds != 0 || terrariaView.CanExtend {
+		t.Fatalf("unexpected unlimited view: %+v", terrariaView)
+	}
+}
+
+func TestUnlimitedServiceNeverExpiresOrExtends(t *testing.T) {
+	cfg := testConfig(t)
+	service := cfg.Services["palworld"]
+	service.RunDuration = "infinite"
+	cfg.Services["palworld"] = service
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.Local)
+	runner := &fakeRunner{statuses: map[string]app.UnitStatus{
+		"palworld.service": {Load: "loaded", Active: "inactive", Sub: "dead"},
+	}}
+	controller := newTestController(t, cfg, runner, app.WithClock(func() time.Time { return now }))
+	if err := controller.Start(context.Background(), "palworld", "test"); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	now = now.Add(365 * 24 * time.Hour)
+	controller.Reconcile(context.Background(), "palworld")
+	if len(runner.stops) != 0 {
+		t.Fatalf("unlimited service was stopped: %#v", runner.stops)
+	}
+	if err := controller.Extend(context.Background(), "palworld", "test"); err == nil {
+		t.Fatal("unlimited service accepted an extension")
+	}
+}

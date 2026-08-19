@@ -239,7 +239,8 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .card-actions button { min-height: 48px; border: 1px solid var(--line-strong); background: transparent; font-weight: 700; cursor: pointer; transition: .2s; }
 .card-actions button:disabled { opacity: .32; cursor: not-allowed; }
 .extend-button:not(:disabled):hover { border-color: var(--card-accent); color: var(--card-accent); background: color-mix(in srgb, var(--card-accent) 7%, transparent); }
-.extend-button span { color: var(--card-accent); font: 1.2rem var(--mono); }
+.extend-button > span:first-child { color: var(--card-accent); font: 1.2rem var(--mono); }
+.extend-button[hidden] + .stop-button { grid-column: 1 / -1; }
 .stop-button:not(:disabled) { color: #ff9f8e; border-color: rgba(255,107,82,.45); }
 .stop-button:not(:disabled):hover { color: #160604; background: var(--coral); border-color: var(--coral); }
 
