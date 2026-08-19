@@ -1,0 +1,75 @@
+name: Code Check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: code-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  code-check:
+    name: Lint, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Check formatting
+        shell: bash
+        run: |
+          files="$(gofmt -l .)"
+          if [[ -n "$files" ]]; then
+            echo "The following files need gofmt:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: Check module files
+        shell: bash
+        run: |
+          go mod tidy
+          changes="$(git status --porcelain -- go.mod go.sum)"
+          if [[ -n "$changes" ]]; then
+            git diff -- go.mod go.sum
+            echo "$changes"
+            echo "Run 'go mod tidy' and commit the result."
+            exit 1
+          fi
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          version: v2.12.2
+          install-mode: goinstall
+          args: --timeout=5m
+
+      - name: Run tests
+        run: go test -race ./...
+
+      - name: Build
+        run: go build -trimpath -o "$RUNNER_TEMP/gamehelm" ./cmd/gamehelm
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+
+      - name: Check JavaScript syntax
+        run: node --check internal/app/web/assets/app.js
