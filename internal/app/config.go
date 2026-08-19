@@ -101,7 +101,7 @@ func loadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("打开配置文件: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var file configFile
 	dec := json.NewDecoder(f)

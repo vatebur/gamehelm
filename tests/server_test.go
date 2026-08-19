@@ -35,6 +35,13 @@ func newHTTPTestServer(t *testing.T, cfg app.Config, runner app.CommandRunner) (
 	return server, client
 }
 
+func closeBody(t *testing.T, body io.Closer) {
+	t.Helper()
+	if err := body.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func getLoginCSRF(t *testing.T, client *http.Client, serverURL string) string {
 	t.Helper()
 	response, err := client.Get(serverURL + "/login")
@@ -42,7 +49,7 @@ func getLoginCSRF(t *testing.T, client *http.Client, serverURL string) string {
 		t.Fatal(err)
 	}
 	body, err := io.ReadAll(response.Body)
-	response.Body.Close()
+	closeBody(t, response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +68,7 @@ func postLogin(t *testing.T, client *http.Client, serverURL, csrf, password stri
 		t.Fatal(err)
 	}
 	body, err := io.ReadAll(response.Body)
-	response.Body.Close()
+	closeBody(t, response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +101,7 @@ func TestLoginCSRFUnaffectedByFaviconRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
+	closeBody(t, response.Body)
 	if response.StatusCode != http.StatusNoContent {
 		t.Fatalf("favicon status = %d, want 204", response.StatusCode)
 	}
@@ -104,7 +111,7 @@ func TestLoginCSRFUnaffectedByFaviconRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
+	closeBody(t, response.Body)
 	if response.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("wrong password status = %d, want 401", response.StatusCode)
 	}
@@ -177,7 +184,7 @@ func TestControlPageRendersEveryConfiguredService(t *testing.T) {
 		t.Fatal(err)
 	}
 	body, err := io.ReadAll(response.Body)
-	response.Body.Close()
+	closeBody(t, response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
