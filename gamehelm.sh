@@ -5,8 +5,10 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_DIR=${GAMEHELM_DIR:-$SCRIPT_DIR}
 RUN_USER=${GAMEHELM_USER:-$(stat -c '%U' "$PROJECT_DIR")}
-EXPECTED_GO='go version go1.26.5 '
+RELEASE_REPOSITORY=vatebur/gamehelm
+RELEASE_VERSION=${GAMEHELM_VERSION:-latest}
 TEMP_DIR=
+BINARY_INSTALL_TMP=
 
 RUN_GROUP=
 RUN_UID=
@@ -25,6 +27,9 @@ EOF
 }
 
 cleanup_temp() {
+  if [[ -n $BINARY_INSTALL_TMP ]]; then
+    rm -f -- "$BINARY_INSTALL_TMP"
+  fi
   if [[ -n $TEMP_DIR && -d $TEMP_DIR ]]; then
     rm -rf -- "$TEMP_DIR"
   fi
@@ -88,24 +93,88 @@ escape_sed_replacement() {
   printf '%s' "$1" | sed 's/[&|\\]/\\&/g'
 }
 
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "缺少安装所需命令：$1" >&2
+    exit 1
+  fi
+}
+
+download_gamehelm() {
+  local architecture asset release_base expected_checksum actual_checksum
+
+  if [[ $(uname -s) != Linux ]]; then
+    echo "GitHub Releases 二进制仅支持 Linux" >&2
+    exit 1
+  fi
+  case $(uname -m) in
+    x86_64|amd64)
+      architecture=amd64
+      ;;
+    aarch64|arm64)
+      architecture=arm64
+      ;;
+    *)
+      echo "不支持的 CPU 架构：$(uname -m)（仅支持 amd64 和 arm64）" >&2
+      exit 1
+      ;;
+  esac
+  if [[ $RELEASE_VERSION != latest && ! $RELEASE_VERSION =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "无效的 Release 版本：$RELEASE_VERSION" >&2
+    exit 1
+  fi
+
+  require_command curl
+  require_command sha256sum
+  TEMP_DIR=$(mktemp -d /tmp/gamehelm-install.XXXXXX)
+  asset=gamehelm-linux-$architecture
+  if [[ $RELEASE_VERSION == latest ]]; then
+    release_base=https://github.com/$RELEASE_REPOSITORY/releases/latest/download
+  else
+    release_base=https://github.com/$RELEASE_REPOSITORY/releases/download/$RELEASE_VERSION
+  fi
+
+  echo "正在下载 GameHelm ${RELEASE_VERSION}（linux/$architecture）..."
+  curl --fail --location --silent --show-error --retry 3 \
+    --proto '=https' --proto-redir '=https' \
+    --output "$TEMP_DIR/$asset" "$release_base/$asset"
+  curl --fail --location --silent --show-error --retry 3 \
+    --proto '=https' --proto-redir '=https' \
+    --output "$TEMP_DIR/SHA256SUMS" "$release_base/SHA256SUMS"
+
+  expected_checksum=$(awk -v asset="$asset" \
+    '$2 == asset || $2 == "*" asset { print $1; exit }' "$TEMP_DIR/SHA256SUMS")
+  if [[ ! $expected_checksum =~ ^[[:xdigit:]]{64}$ ]]; then
+    echo "SHA256SUMS 中未找到有效的 $asset 校验值" >&2
+    exit 1
+  fi
+  actual_checksum=$(sha256sum "$TEMP_DIR/$asset")
+  actual_checksum=${actual_checksum%% *}
+  if [[ ${actual_checksum,,} != ${expected_checksum,,} ]]; then
+    echo "$asset 的 SHA-256 校验失败" >&2
+    exit 1
+  fi
+
+  # 先写入同一目录的临时文件，再原子替换正在使用的旧版本。
+  BINARY_INSTALL_TMP=$PROJECT_DIR/.gamehelm.install.$$
+  install -o "$RUN_USER" -g "$RUN_GROUP" -m 0755 \
+    "$TEMP_DIR/$asset" "$BINARY_INSTALL_TMP"
+  mv -f -- "$BINARY_INSTALL_TMP" "$PROJECT_DIR/gamehelm"
+  BINARY_INSTALL_TMP=
+}
+
 install_gamehelm() {
   require_root install
   load_run_user
 
-  # 使用固定工具链构建，避免部署出不可复现的二进制。
-  if [[ $(go version) != "$EXPECTED_GO"* ]]; then
-    echo "需要 Go 1.26.5" >&2
-    exit 1
-  fi
   cd "$PROJECT_DIR"
-  go build -buildvcs=false -trimpath -ldflags='-s -w' -o gamehelm ./cmd/gamehelm
+  download_gamehelm
 
   # 首次安装复制示例配置；已有配置始终由管理员维护。
   if [[ ! -f config.json ]]; then
     cp config.example.json config.json
   fi
   chmod 0600 config.json
-  chmod 0755 gamehelm
   chown "$RUN_USER:$RUN_GROUP" "$PROJECT_DIR" config.json gamehelm
 
   # linger 让 user services 在无人登录时仍可开机运行。
@@ -115,7 +184,6 @@ install_gamehelm() {
   # 配置中的所有游戏 unit 必须已经存在于同一 user manager。
   run_as_user "$PROJECT_DIR/gamehelm" -config "$PROJECT_DIR/config.json" -check
 
-  TEMP_DIR=$(mktemp -d /tmp/gamehelm-install.XXXXXX)
   local service_tmp=$TEMP_DIR/gamehelm.service
   local project_value
   project_value=$(escape_sed_replacement "$PROJECT_DIR")
