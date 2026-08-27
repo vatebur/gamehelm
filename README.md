@@ -109,10 +109,16 @@ systemctl --user stop palworld.service
 
 运行 `./gamehelm -config config.json -check` 确认 unit 已加载。修改配置后需重启 `gamehelm.service` 才会生效；若 GameHelm 已安装，执行 `systemctl --user restart gamehelm.service` 载入新配置。
 
-确保已安装 Go 1.26.5，然后执行安装：
+安装脚本会自动识别 `amd64` 或 `arm64`，下载 GitHub Releases 中的最新 Linux 二进制并校验 SHA-256；目标机无需安装 Go。执行：
 
 ```bash
 sudo ./gamehelm.sh
+```
+
+如需固定版本，可指定 Release tag：
+
+```bash
+sudo GAMEHELM_VERSION=v1.3 ./gamehelm.sh
 ```
 
 默认访问地址为 `http://服务器IP:8231`，示例配置的初始密码是 `changeme`。
@@ -121,7 +127,7 @@ sudo ./gamehelm.sh
 
 - `~/.config/systemd/user/gamehelm.service`：GameHelm 的 user service 定义，设置工作目录、启动命令和异常重启策略；脚本会启用并立即启动该服务。
 - `/var/lib/systemd/linger/<用户>`：`loginctl enable-linger` 创建的标记，使该用户未登录时 user services 仍能开机运行；卸载 GameHelm 时会保留。
-- `gamehelm`：由源码构建的可执行文件，保存在项目目录。
+- `gamehelm`：从 GitHub Releases 下载并通过 SHA-256 校验的可执行文件，保存在项目目录。
 - `config.json`：实际配置，保存在项目目录且不提交到 Git。
 
 GameHelm 和游戏服务必须运行在同一个普通用户的 systemd user manager 下。脚本不会迁移系统级游戏 unit，也不会创建 `/etc/sudoers.d/gamehelm`。
