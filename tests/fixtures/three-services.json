@@ -1,17 +1,20 @@
 {
-  "listen": "127.0.0.1:18231",
-  "password": "changeme",
+  "web": { "listen": "127.0.0.1:18231" },
+  "auth": { "password": "fixture-test-password" },
   "services": {
     "palworld": {
       "display_name": "帕鲁世界",
+      "runtime": "systemd",
       "unit": "palworld.service"
     },
     "terraria": {
       "display_name": "泰拉瑞亚",
+      "runtime": "systemd",
       "unit": "terraria.service"
     },
     "factorio": {
       "display_name": "异星工厂",
+      "runtime": "systemd",
       "unit": "factorio.service"
     }
   }

@@ -1,15 +1,26 @@
 {
-  "listen": "0.0.0.0:8231",
-  "password": "changeme",
+  "web": {
+    "listen": "0.0.0.0:8231"
+    // 使用反向代理时，可启用下面的选项。
+    // ,"public_origin": "https://games.example.com"
+    // ,"trusted_proxies": ["127.0.0.1/32", "::1/128"]
+  },
+  "auth": {
+    "password": ""
+  },
+  // 需要管理 Docker 时，填写本机 socket 的实际路径并启用此项。
+  // "docker": { "socket": "/run/user/1000/docker.sock" },
   "services": {
     "palworld": {
       "display_name": "帕鲁世界",
+      "runtime": "systemd",
       "unit": "palworld.service",
       "run_duration": "4h",
       "extension_duration": "1h"
     },
     "terraria": {
       "display_name": "泰拉瑞亚",
+      "runtime": "systemd",
       "unit": "terraria.service",
       "run_duration": "infinite"
     }

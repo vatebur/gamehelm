@@ -72,4 +72,4 @@ jobs:
           node-version: "26"
 
       - name: Check JavaScript syntax
-        run: node --check internal/app/web/assets/app.js
+        run: node --check internal/web/assets/app.js

@@ -1,161 +1,90 @@
-# GameHelm（游舵）
+# GameHelm（游舵）2.0
 
-GameHelm（游舵）是一个只使用 Go 标准库构建的多游戏服务器 Web 控制台。它通过配置文件统一管理任意数量的 systemd 游戏服务，并为每次启动提供自动关闭、倒计时和续时能力。
+GameHelm 是使用 Go 构建的轻量级服务管理 Web 控制台，统一管理同一用户下的 systemd user services，以及本机 Docker Engine 中配置好的容器。适用于 Web 应用、后台任务、开发环境和游戏服务器，支持异步启停、定时关闭、续时和无限运行，界面适配手机。
 
-## 功能
+默认访问地址为 `http://服务器IP:8231`。`public_origin` 和 `trusted_proxies` 都是可选配置，示例默认注释。需要 HTTPS 反向代理时启用对应配置。HTTP 访问适用于可信局域网，远程访问可以使用 HTTPS。
 
-- 密码登录、浏览器会话、CSRF 防护和登录失败限速
-- 通过配置文件管理同一用户下的任意数量 systemd user services，允许同时运行
-- 每个服务独立配置运行与续时时长，也可设为无限运行
-- 倒计时保存在内存中；Web 服务重启后，按最新配置重新接管仍在运行的服务
-- 自动接管从命令行或其他途径启动的游戏服务
-- 应用日志统一写入 systemd user journal
-- 手机优先的响应式简体中文界面
-
-## 安全说明
-
-服务按需求仅提供 HTTP，并监听所有网络接口。HTTP 会明文传输密码和会话 Cookie，不应通过不可信网络访问。示例配置密码是 `changeme`；请尽快修改 `config.json`，然后重启服务：
-
-```bash
-systemctl --user restart gamehelm.service
-```
-
-真实 `config.json` 和二进制均已被 Git 忽略。
-
-## 构建与测试
-
-```bash
-source /etc/profile
-vfox use golang@1.26.5
-go test ./...
-go build -o gamehelm ./cmd/gamehelm
-vfox use nodejs@26.7.0
-node --check internal/app/web/assets/app.js
-```
-
-## 安装
-
-先创建并修改实际配置：
+## 配置
 
 ```bash
 cp config.example.json config.json
-nano config.json
+chmod 600 config.json
 ```
 
-`config.json` 位于项目目录，支持以下参数：
+编辑 `config.json`，填写自己的口令及实际受管服务。配置支持 `//` 和 `/* */` 注释。初始口令至少 12 个字符、最多 1024 字节。首次启动会在监听端口前，将 `auth.password` 原子替换为带随机盐的 Argon2id `auth.password_hash`，保留文件中的注释、其他字段及原有排版。配置文件所在目录需要运行用户的写权限。
 
-| 参数 | 必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `listen` | 否 | `0.0.0.0:8231` | Web 服务监听地址。 |
-| `password` | 是 | 无 | 控制台登录密码；请将示例值 `changeme` 改为强密码。 |
-| `services` | 是 | 无 | 要管理的服务集合，至少包含一个服务。 |
-| `services.<id>` | 是 | 无 | 服务标识，最多 64 个字符；必须以小写字母或数字开头，且只能包含小写字母、数字、下划线和连字符。 |
-| `services.<id>.display_name` | 是 | 无 | 页面显示名称，不能是空字符串或纯空白。 |
-| `services.<id>.unit` | 是 | 无 | 同一用户下真实的 systemd user unit 名称，例如 `palworld.service`；必须以 `.service` 结尾，只能包含字母、数字、下划线、点、`@` 和连字符，且不能与其他服务重复。 |
-| `services.<id>.run_duration` | 否 | `4h` | 本次运行时长。有限值采用 Go 标准时长格式且不能少于 5 分钟；也可设为区分大小写的小写值 `infinite`，此时服务不会自动关闭，`extension_duration` 不生效且可省略。只有省略字段时才使用默认值，空字符串和 `null` 均为配置错误。 |
-| `services.<id>.extension_duration` | 否 | `1h` | 每次续时时长。采用 Go 标准时长格式，不能少于 5 分钟，并且必须小于有限的 `run_duration`；`run_duration` 为 `infinite` 时不生效，但若填写仍须满足格式和最小时长要求。只有省略字段时才使用默认值，空字符串和 `null` 均为配置错误。 |
+| 字段 | 说明 |
+| --- | --- |
+| `web.listen` | 默认 `0.0.0.0:8231` |
+| `web.public_origin` | 可选，对外 HTTP 或 HTTPS 来源地址，用于来源校验。HTTPS 地址会启用 Secure Cookie |
+| `web.trusted_proxies` | 可选，可信代理 CIDR 列表。省略时按实际连接来源限速 |
+| `auth.password` | 初次启动或更换密码时填写的明文，与 `password_hash` 互斥 |
+| `auth.password_hash` | 启动后生成的 Argon2id 哈希 |
+| `docker.socket` | 使用 Docker 时填写本机 Unix socket 的绝对路径 |
+| `services.<id>.display_name` | 页面名称 |
+| `services.<id>.runtime` | `systemd` 或 `docker` |
+| `services.<id>.unit` | systemd 完整 `.service` 名称 |
+| `services.<id>.container` | Docker 完整容器名 |
+| `services.<id>.run_duration` | 默认 `4h`，支持 Go 时长格式或 `infinite` |
+| `services.<id>.extension_duration` | 默认 `1h`，至少 `5m`，且小于有限运行时长 |
 
-Go 标准时长格式支持 `48h`、`1h30m`、`1.5h` 和 `5m`，不支持 `1d`。可用 `systemctl --user list-unit-files --type=service` 查询可填写的 unit。
+有限运行时长至少为 `5m`，空字符串与 `null` 会被拒绝。续时在剩余时间进入一个续时窗口后开放，每次在原截止时间上增加配置的续时长度。
 
-### 添加游戏 systemd user unit
-
-游戏服务必须与 GameHelm 属于同一个普通用户。登录该用户后创建 unit；不要用 `sudo systemctl --user`。以下示例中的目录、启动脚本和停止信号需要按游戏实际要求修改：
-
-```bash
-mkdir -p ~/.config/systemd/user
-nano ~/.config/systemd/user/palworld.service
-```
-
-```ini
-[Unit]
-Description=Palworld dedicated server
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=simple
-WorkingDirectory=/home/palworld/servers/palworld
-ExecStart=/home/palworld/servers/palworld/start-server.sh
-Restart=on-failure
-RestartSec=5
-KillSignal=SIGINT
-TimeoutStopSec=120
-
-[Install]
-WantedBy=default.target
-```
-
-`ExecStart` 必须使用绝对路径。启动脚本应保持前台运行并让 systemd 跟踪真实游戏进程；需要管道、重定向或多条命令时，将它们放入可执行脚本，不要直接写 shell 语法。创建后验证并试运行：
-
-```bash
-systemd-analyze --user verify ~/.config/systemd/user/palworld.service
-systemctl --user daemon-reload
-systemctl --user start palworld.service
-systemctl --user status palworld.service
-journalctl --user -u palworld.service -f
-systemctl --user stop palworld.service
-```
-
-仅当希望游戏随该用户的 systemd manager 自动启动时，才执行 `systemctl --user enable palworld.service`；GameHelm 本身不要求游戏 unit 已启用。最后在 `config.json` 的 `services` 中加入唯一的小写标识，并使 `unit` 与文件名完全一致：
+Docker 配置片段如下。先通过 Docker 或 Compose 创建容器，再将其加入配置。
 
 ```json
-"palworld": {
-  "display_name": "帕鲁世界",
-  "unit": "palworld.service",
-  "run_duration": "6h",
-  "extension_duration": "30m"
+"docker": { "socket": "/run/user/1000/docker.sock" },
+"services": {
+  "worker": {
+    "display_name": "后台任务",
+    "runtime": "docker",
+    "container": "worker",
+    "run_duration": "4h",
+    "extension_duration": "1h"
+  }
 }
 ```
 
-运行 `./gamehelm -config config.json -check` 确认 unit 已加载。修改配置后需重启 `gamehelm.service` 才会生效；若 GameHelm 已安装，执行 `systemctl --user restart gamehelm.service` 载入新配置。
+推荐使用运行用户的 Rootless Docker socket。常规 Docker 可填写 `/var/run/docker.sock`，管理员须授予运行用户访问权限，该权限具有宿主机 root 级能力。
 
-安装脚本会自动识别 `amd64` 或 `arm64`，下载 GitHub Releases 中的最新 Linux 二进制并校验 SHA-256；目标机无需安装 Go。执行：
+## 计时与故障
+
+倒计时、续时次数、会话及操作进度保存在内存中。GameHelm 重启后按当前配置重新接管仍在运行的服务，重新获得完整时长，续时次数归零。控制台停机期间服务由原运行时托管，已经提交的停止操作仍可能完成。
+
+同一个 GameHelm 进程运行期间，Docker 或 systemd 暂时不可达会显示「异常」并保留计时。恢复后若仍为同一次运行则继续原计时，已经到期的服务会自动关停。服务外部重启、Docker 自动重启或容器重建会开启新一轮计时。
+
+配置在 GameHelm 启动时加载。修改后重启 GameHelm 生效。换密码时将 `auth.password_hash` 替换为新的 `auth.password` 再重启，原会话随重启失效。
+
+## 检查与安装
 
 ```bash
-sudo ./gamehelm.sh
+./gamehelm -config config.json -check-config
+./gamehelm -config config.json -check
+sudo GAMEHELM_VERSION=v2.0.0 ./gamehelm.sh
 ```
 
-如需固定版本，可指定 Release tag：
+`-check-config` 只读校验配置，`-check` 进一步检查全部目标。正常启动允许目标暂时不可达，面板会显示异常。安装脚本从指定 GitHub Release 下载 Linux 二进制并验证 SHA-256。使用本地构建产物时执行以下命令。
 
 ```bash
-sudo GAMEHELM_VERSION=v1.3 ./gamehelm.sh
+sudo GAMEHELM_BINARY=/绝对路径/gamehelm-linux-amd64 ./gamehelm.sh
 ```
 
-默认访问地址为 `http://服务器IP:8231`，示例配置的初始密码是 `changeme`。
-
-安装脚本会创建或更新：
-
-- `~/.config/systemd/user/gamehelm.service`：GameHelm 的 user service 定义，设置工作目录、启动命令和异常重启策略；脚本会启用并立即启动该服务。
-- `/var/lib/systemd/linger/<用户>`：`loginctl enable-linger` 创建的标记，使该用户未登录时 user services 仍能开机运行；卸载 GameHelm 时会保留。
-- `gamehelm`：从 GitHub Releases 下载并通过 SHA-256 校验的可执行文件，保存在项目目录。
-- `config.json`：实际配置，保存在项目目录且不提交到 Git。
-
-GameHelm 和游戏服务必须运行在同一个普通用户的 systemd user manager 下。脚本不会迁移系统级游戏 unit，也不会创建 `/etc/sudoers.d/gamehelm`。
-
-## 卸载
+脚本以项目目录属主作为运行用户，可以用 `GAMEHELM_USER` 和 `GAMEHELM_DIR` 指定用户及路径。运行用户须为普通用户。受管 systemd unit 和 GameHelm 位于同一用户的 systemd manager 下。脚本配置 linger，并安装 `~/.config/systemd/user/gamehelm.service`。
 
 ```bash
+systemctl --user restart gamehelm.service
+journalctl --user -u gamehelm.service -f
 sudo ./gamehelm.sh uninstall
 ```
 
-卸载会清理 GameHelm user service 和运行文件，但保留源码、游戏 user services 和 linger。
+## 构建与验证
 
-## 日志
-
-GameHelm 日志统一保存在 systemd user journal：
+使用 `go.mod` 指定的 Go 工具链。
 
 ```bash
-journalctl --user -u gamehelm.service
-journalctl --user -u gamehelm.service -f
+go test -race ./...
+go build -trimpath -o gamehelm ./cmd/gamehelm
+node --check internal/web/assets/app.js
 ```
 
-## 文件
-
-- `config.json`：实际配置，明文保存密码，不纳入 Git
-- `config.example.json`：可提交的配置示例
-- `cmd/gamehelm/`：命令行入口
-- `internal/app/`：配置、认证、服务控制、状态和 Web 页面
-- `deploy/gamehelm.service`：使用非敏感占位符的 systemd unit 模板
-- `tests/`：配置、控制器和 HTTP 集成测试
-
-如果管理员主动停止 `gamehelm.service`，运行中的有限时长游戏服务不会在控制台停机期间准时关闭。控制台再次启动后会接管仍在运行的游戏服务：有限服务从重新发现时开始完整的新计时，无限服务继续保持运行。
+代码按 `config`、`auth`、`control`、`runtime`、`web` 拆分，由 `internal/app` 组装。完整设计与验收标准见 [2.0 设计方案](docs/v2-design.md)。

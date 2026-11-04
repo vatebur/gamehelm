@@ -7,62 +7,65 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/vatebur/gamehelm/internal/app"
+	"github.com/vatebur/gamehelm/internal/config"
+	"github.com/vatebur/gamehelm/internal/control"
+	"github.com/vatebur/gamehelm/internal/runtime"
 )
 
 type fakeRunner struct {
-	mu       sync.Mutex
-	statuses map[string]app.UnitStatus
-	starts   []string
-	stops    []string
-	startErr error
-	stopErr  error
+	mu         sync.Mutex
+	statuses   map[string]runtime.Snapshot
+	starts     []string
+	stops      []string
+	startErr   error
+	stopErr    error
+	inspectErr error
 }
 
-func (f *fakeRunner) Status(_ context.Context, unit string) (app.UnitStatus, error) {
+func (f *fakeRunner) Inspect(_ context.Context, unit string) (runtime.Snapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.statuses[unit], nil
+	return f.statuses[unit], f.inspectErr
 }
 
-func (f *fakeRunner) Start(_ context.Context, unit string) error {
+func (f *fakeRunner) Start(_ context.Context, unit string, expected runtime.Snapshot) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.starts = append(f.starts, unit)
 	if f.startErr == nil {
-		f.statuses[unit] = app.UnitStatus{Load: "loaded", Active: "active", Sub: "running"}
+		f.statuses[unit] = runtime.Snapshot{State: runtime.Running, TargetID: expected.TargetID, RunID: "started"}
 	}
 	return f.startErr
 }
 
-func (f *fakeRunner) Stop(_ context.Context, unit string) error {
+func (f *fakeRunner) Stop(_ context.Context, unit string, expected runtime.Snapshot) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stops = append(f.stops, unit)
 	if f.stopErr == nil {
-		f.statuses[unit] = app.UnitStatus{Load: "loaded", Active: "inactive", Sub: "dead"}
+		f.statuses[unit] = runtime.Snapshot{State: runtime.Stopped, TargetID: expected.TargetID, RunID: expected.RunID}
 	}
 	return f.stopErr
 }
 
-func testConfig(t *testing.T) app.Config {
+func testConfig(t *testing.T) config.Config {
 	t.Helper()
-	return app.Config{
-		Listen:   "127.0.0.1:0",
-		Password: "test-password",
-		Services: map[string]app.ServiceConfig{
-			"palworld": {DisplayName: "帕鲁世界", Unit: "palworld.service"},
-			"terraria": {DisplayName: "泰拉瑞亚", Unit: "terraria.service"},
+	return config.Config{
+		Web:  config.WebConfig{Listen: "127.0.0.1:0"},
+		Auth: config.AuthConfig{Password: "test-password"},
+		Services: map[string]config.Service{
+			"palworld": {DisplayName: "帕鲁世界", Runtime: "systemd", Unit: "palworld.service"},
+			"terraria": {DisplayName: "泰拉瑞亚", Runtime: "systemd", Unit: "terraria.service"},
 		},
 	}
 }
 
-func newTestController(t *testing.T, cfg app.Config, runner app.CommandRunner, options ...app.ControllerOption) *app.Controller {
+func newTestController(t *testing.T, cfg config.Config, runner runtime.Driver, options ...control.Option) *control.Controller {
 	t.Helper()
-	return app.NewController(cfg, runner, log.New(io.Discard, "", 0), options...)
+	return control.New(cfg, map[string]runtime.Driver{"systemd": runner, "docker": runner}, log.New(io.Discard, "", 0), options...)
 }
 
-func viewByID(t *testing.T, controller *app.Controller, id string) app.ServiceView {
+func viewByID(t *testing.T, controller *control.Controller, id string) control.ServiceView {
 	t.Helper()
 	for _, view := range controller.Views() {
 		if view.ID == id {
@@ -70,5 +73,5 @@ func viewByID(t *testing.T, controller *app.Controller, id string) app.ServiceVi
 		}
 	}
 	t.Fatalf("service view %q not found", id)
-	return app.ServiceView{}
+	return control.ServiceView{}
 }
