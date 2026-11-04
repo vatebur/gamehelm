@@ -2,6 +2,8 @@
 
 GameHelm 是使用 Go 构建的轻量级服务管理 Web 控制台，统一管理同一用户下的 systemd user services，以及本机 Docker Engine 中配置好的容器。适用于 Web 应用、后台任务、开发环境和游戏服务器，支持异步启停、定时关闭、续时和无限运行，界面适配手机。
 
+`main` 和 `2.0` 分支维护 2.0 系列，当前版本为 [v2.0.0](https://github.com/vatebur/gamehelm/releases/tag/v2.0.0)。1.x 系列保存在 [1.x 分支](https://github.com/vatebur/gamehelm/tree/1.x)，对应维护版本为 [v1.3.1](https://github.com/vatebur/gamehelm/releases/tag/v1.3.1)。
+
 默认访问地址为 `http://服务器IP:8231`。`public_origin` 和 `trusted_proxies` 都是可选配置，示例默认注释。需要 HTTPS 反向代理时启用对应配置。HTTP 访问适用于可信局域网，远程访问可以使用 HTTPS。
 
 ## 配置
