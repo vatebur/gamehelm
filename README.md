@@ -1,6 +1,8 @@
-# GameHelm（游舵）
+# GameHelm（游舵）1.x
 
-GameHelm（游舵）是一个只使用 Go 标准库构建的多游戏服务器 Web 控制台。它通过配置文件统一管理任意数量的 systemd 游戏服务，并为每次启动提供自动关闭、倒计时和续时能力。
+GameHelm（游舵）是一个只使用 Go 标准库构建的多服务 Web 控制台。它通过配置文件统一管理任意数量的 systemd 服务，并为每次启动提供自动关闭、倒计时和续时能力。
+
+本分支维护 1.x 系列，默认安装版本为 `v1.3.1`。支持 Docker 和新版认证配置的 2.0 系列由 [main 分支](https://github.com/vatebur/gamehelm/tree/main)维护。
 
 ## 功能
 
@@ -109,7 +111,7 @@ systemctl --user stop palworld.service
 
 运行 `./gamehelm -config config.json -check` 确认 unit 已加载。修改配置后需重启 `gamehelm.service` 才会生效；若 GameHelm 已安装，执行 `systemctl --user restart gamehelm.service` 载入新配置。
 
-安装脚本会自动识别 `amd64` 或 `arm64`，下载 GitHub Releases 中的最新 Linux 二进制并校验 SHA-256；目标机无需安装 Go。执行：
+安装脚本会自动识别 `amd64` 或 `arm64`，默认下载 `v1.3.1` 的 Linux 二进制并校验 SHA-256，目标机无需安装 Go。执行以下命令。
 
 ```bash
 sudo ./gamehelm.sh
@@ -118,7 +120,7 @@ sudo ./gamehelm.sh
 如需固定版本，可指定 Release tag：
 
 ```bash
-sudo GAMEHELM_VERSION=v1.3 ./gamehelm.sh
+sudo GAMEHELM_VERSION=v1.3.1 ./gamehelm.sh
 ```
 
 默认访问地址为 `http://服务器IP:8231`，示例配置的初始密码是 `changeme`。
