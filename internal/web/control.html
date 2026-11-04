@@ -25,18 +25,11 @@
   <main class="dashboard">
     <section class="dashboard-heading">
       <div>
-        <p class="eyebrow">实时服务控制</p>
+        <p class="eyebrow">GAMEHELM 2.0 / 实时服务控制</p>
         <h1>选择一项服务，<br><em>让它按计划运行。</em></h1>
       </div>
       <p class="heading-note">每项服务按独立配置运行；有限服务临近关闭时可续时，无限服务会持续运行直至手动关闭。</p>
     </section>
-
-    {{if .DefaultPassword}}
-    <aside class="password-warning" role="alert">
-      <span class="warning-symbol">!</span>
-      <div><strong>正在使用默认密码 changeme</strong><p>请修改 config.json 后重启 gamehelm.service。</p></div>
-    </aside>
-    {{end}}
 
     <section class="service-grid" aria-label="受管服务">
       {{range .Services}}
@@ -44,10 +37,10 @@
         <div class="card-index">{{.Index}}</div>
         <header class="card-header">
           <div>
-            <p class="card-kicker">SYSTEMD / 受管服务</p>
+            <p class="card-kicker">{{.Runtime}} / 受管服务</p>
             <h2>{{.Name}}</h2>
           </div>
-          <button class="power-switch" type="button" role="switch" aria-checked="false" aria-label="启动{{.Name}}">
+          <button class="power-switch" type="button" disabled role="switch" aria-checked="false" aria-label="启动{{.Name}}">
             <span class="switch-track"><i></i></span>
             <span class="switch-label">关闭</span>
           </button>
@@ -55,7 +48,7 @@
 
         <div class="status-line">
           <span class="status-beacon" aria-hidden="true"></span>
-          <div><strong class="service-status">状态检测中</strong><p class="service-detail">正在读取 systemd 服务状态</p></div>
+          <div><strong class="service-status">状态检测中</strong><p class="service-detail">正在读取服务状态</p></div>
         </div>
 
         <div class="timer-zone">

@@ -1,5 +1,5 @@
 [Unit]
-Description=GameHelm multi-game server controller
+Description=GameHelm systemd and Docker service controller
 
 [Service]
 Type=simple

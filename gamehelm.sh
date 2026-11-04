@@ -6,7 +6,9 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_DIR=${GAMEHELM_DIR:-$SCRIPT_DIR}
 RUN_USER=${GAMEHELM_USER:-$(stat -c '%U' "$PROJECT_DIR")}
 RELEASE_REPOSITORY=vatebur/gamehelm
-RELEASE_VERSION=${GAMEHELM_VERSION:-latest}
+RELEASE_VERSION=${GAMEHELM_VERSION:-v2.0.0}
+LOCAL_BINARY=${GAMEHELM_BINARY:-}
+BINARY_SOURCE=
 TEMP_DIR=
 BINARY_INSTALL_TMP=
 
@@ -23,6 +25,8 @@ usage() {
 
   install     安装并启动 GameHelm user service（默认）
   uninstall   卸载 GameHelm，保留游戏 user services 和 linger
+
+可通过 GAMEHELM_BINARY 指定本地构建的二进制，或用 GAMEHELM_VERSION 指定 Release。
 EOF
 }
 
@@ -103,6 +107,13 @@ require_command() {
 download_gamehelm() {
   local architecture asset release_base expected_checksum actual_checksum
 
+  TEMP_DIR=$(mktemp -d /tmp/gamehelm-install.XXXXXX)
+  if [[ -n $LOCAL_BINARY ]]; then
+    BINARY_SOURCE=$TEMP_DIR/gamehelm
+    install -m 0755 "$LOCAL_BINARY" "$BINARY_SOURCE"
+    return
+  fi
+
   if [[ $(uname -s) != Linux ]]; then
     echo "GitHub Releases 二进制仅支持 Linux" >&2
     exit 1
@@ -126,7 +137,6 @@ download_gamehelm() {
 
   require_command curl
   require_command sha256sum
-  TEMP_DIR=$(mktemp -d /tmp/gamehelm-install.XXXXXX)
   asset=gamehelm-linux-$architecture
   if [[ $RELEASE_VERSION == latest ]]; then
     release_base=https://github.com/$RELEASE_REPOSITORY/releases/latest/download
@@ -155,12 +165,8 @@ download_gamehelm() {
     exit 1
   fi
 
-  # 先写入同一目录的临时文件，再原子替换正在使用的旧版本。
-  BINARY_INSTALL_TMP=$PROJECT_DIR/.gamehelm.install.$$
-  install -o "$RUN_USER" -g "$RUN_GROUP" -m 0755 \
-    "$TEMP_DIR/$asset" "$BINARY_INSTALL_TMP"
-  mv -f -- "$BINARY_INSTALL_TMP" "$PROJECT_DIR/gamehelm"
-  BINARY_INSTALL_TMP=
+  chmod 0755 "$TEMP_DIR/$asset"
+  BINARY_SOURCE=$TEMP_DIR/$asset
 }
 
 install_gamehelm() {
@@ -172,30 +178,44 @@ install_gamehelm() {
 
   # 首次安装复制示例配置；已有配置始终由管理员维护。
   if [[ ! -f config.json ]]; then
-    cp config.example.json config.json
+    cp "$SCRIPT_DIR/config.example.json" config.json
+    chmod 0600 config.json
+    chown "$RUN_USER:$RUN_GROUP" config.json
+    echo "已创建 config.json，请填写管理员口令和游戏目标后重新运行安装。" >&2
+    exit 1
   fi
   chmod 0600 config.json
-  chown "$RUN_USER:$RUN_GROUP" "$PROJECT_DIR" config.json gamehelm
+  chown "$RUN_USER:$RUN_GROUP" "$PROJECT_DIR" config.json
+
+  "$BINARY_SOURCE" -config "$PROJECT_DIR/config.json" -check-config
+  BINARY_INSTALL_TMP=$PROJECT_DIR/.gamehelm.install.$$
+  install -o "$RUN_USER" -g "$RUN_GROUP" -m 0755 "$BINARY_SOURCE" "$BINARY_INSTALL_TMP"
+  mv -f -- "$BINARY_INSTALL_TMP" "$PROJECT_DIR/gamehelm"
+  BINARY_INSTALL_TMP=
 
   # linger 让 user services 在无人登录时仍可开机运行。
   loginctl enable-linger "$RUN_USER"
   ensure_user_manager
 
-  # 配置中的所有游戏 unit 必须已经存在于同一 user manager。
-  run_as_user "$PROJECT_DIR/gamehelm" -config "$PROJECT_DIR/config.json" -check
+  if ! run_as_user "$PROJECT_DIR/gamehelm" -config "$PROJECT_DIR/config.json" -check; then
+    echo "部分游戏目标检查失败，控制台启动后会显示异常状态。" >&2
+  fi
 
   local service_tmp=$TEMP_DIR/gamehelm.service
   local project_value
   project_value=$(escape_sed_replacement "$PROJECT_DIR")
-  sed -e "s|@PROJECT_DIR@|$project_value|g" deploy/gamehelm.service >"$service_tmp"
+  sed -e "s|@PROJECT_DIR@|$project_value|g" "$SCRIPT_DIR/deploy/gamehelm.service" >"$service_tmp"
 
   install -d -o "$RUN_USER" -g "$RUN_GROUP" -m 0755 "$USER_UNIT_DIR"
   install -o "$RUN_USER" -g "$RUN_GROUP" -m 0644 "$service_tmp" "$SERVICE_FILE"
   user_systemctl daemon-reload
   run_as_user /usr/bin/systemd-analyze --user verify "$SERVICE_FILE"
-  user_systemctl enable --now gamehelm.service
+  user_systemctl enable gamehelm.service
+  user_systemctl restart gamehelm.service
+  sleep 2
+  user_systemctl is-active --quiet gamehelm.service
 
-  echo "安装完成：http://127.0.0.1:8231（初始密码：changeme）"
+  echo "安装完成，请按 config.json 中 web.listen 的地址访问。"
 }
 
 uninstall_gamehelm() {

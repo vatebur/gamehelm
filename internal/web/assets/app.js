@@ -49,6 +49,7 @@
 
   const request = async (url, options = {}) => {
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(10000),
       ...options,
       headers: { "X-CSRF-Token": csrf, ...(options.headers || {}) },
     });
@@ -77,7 +78,7 @@
     toggle.setAttribute("aria-label", `${service.on ? "关闭" : "启动"}${service.name}`);
     toggle.querySelector(".switch-label").textContent = service.on ? "开启" : "关闭";
     toggle.disabled = Boolean(service.busy) || !service.available;
-    stop.disabled = !service.on || Boolean(service.busy);
+    stop.disabled = !service.on || Boolean(service.busy) || !service.available;
     status.textContent = service.status;
     detail.textContent = service.error || service.detail;
     card.querySelector(".service-notice").textContent = service.notice || "";
@@ -113,7 +114,7 @@
       deadline.textContent = "启动后将在此显示关闭时间";
       rail.style.width = "0%";
     }
-    const canExtendNow = !service.unlimited && service.running && !service.busy && service.can_extend && remaining > 0 && remaining <= service.extension_duration_seconds;
+    const canExtendNow = service.available && !service.unlimited && service.running && !service.busy && service.can_extend && remaining > 0 && remaining <= service.extension_duration_seconds;
     extend.disabled = !canExtendNow;
   };
 
@@ -154,8 +155,8 @@
       const data = await request(`/api/services/${id}/${action}`, { method: "POST" });
       if (data.services) applyServices(data.services);
       const success = {
-        start: `${service.name}已启动`,
-        stop: `${service.name}已关闭`,
+        start: data.accepted ? `已提交${service.name}的启动请求` : `${service.name}已在运行`,
+        stop: data.accepted ? `已提交${service.name}的关闭请求` : `${service.name}已关闭`,
         extend: `${service.name}已延长 ${formatDurationLabel(service.extension_duration_seconds)}`,
       }[action];
       showToast(success);
@@ -172,6 +173,7 @@
     pendingStop = id;
     document.getElementById("confirm-service-name").textContent = service.name;
     document.getElementById("confirm-remaining").textContent = service.unlimited ? "无限运行" : formatDuration(remainingFor(service));
+    dialog.returnValue = "";
     dialog.showModal();
   };
 
